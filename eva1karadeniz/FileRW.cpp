@@ -1,19 +1,19 @@
-#include "./FileReader.h"
+#include "./FileRW.h"
 
 using namespace std;
 
-int FileReader::portService;
-int FileReader::portAdmin;
-string FileReader::sepTrame;
-string FileReader::finTrame;
-string FileReader::sepCSV;
-string FileReader::pwdMaster;
-string FileReader::pwdAdmin;
-vector<vector<string> > FileReader::F_AGENTS;
-vector<vector<string> > FileReader::F_TERM;
-vector<vector<string> > FileReader::F_WAITING;
+int FileRW::portService;
+int FileRW::portAdmin;
+string FileRW::sepTrame;
+string FileRW::finTrame;
+string FileRW::sepCSV;
+string FileRW::pwdMaster;
+string FileRW::pwdAdmin;
+vector<vector<string> > FileRW::F_AGENTS;
+vector<vector<string> > FileRW::F_TERM;
+vector<vector<string> > FileRW::F_WAITING;
 
-int FileReader::init()
+int FileRW::init()
 {
     ifstream cFile("Serveur_Terminaux.conf");
     if (cFile.is_open())
@@ -49,7 +49,7 @@ int FileReader::init()
     return 0;
 }
 
-int FileReader::init_f()
+int FileRW::init_f()
 {
     ifstream fAgents("F_AGENTS");
     ifstream fTerm("F_TERM");
@@ -75,7 +75,7 @@ int FileReader::init_f()
         {
             vector<string> elements;
             int pos = 0;
-            if ((pos = lineAgent.find(FileReader::sepCSV)) != std::string::npos)
+            if ((pos = lineAgent.find(FileRW::sepCSV)) != std::string::npos)
             {
                 elements.push_back(lineAgent.substr(0, pos));
                 elements.push_back(lineAgent.substr(pos+1, lineAgent.length()));
@@ -83,6 +83,40 @@ int FileReader::init_f()
                 elements.clear();
             }
             
+        }
+    }
+    if (fTerm.is_open())
+    {
+        string lineTerm;
+        while (getline(fTerm, lineTerm))
+        {
+            vector<string> elements;
+            int pos = 0;
+            while ((pos = lineTerm.find(FileRW::sepCSV)) != std::string::npos)
+            {
+                elements.push_back(lineTerm.substr(0, pos));
+                lineTerm.erase(0, pos + FileRW::sepCSV.length());
+            }
+            F_TERM.push_back(elements);
+            elements.clear();
+            
+        }
+    }
+    if (fWaiting.is_open())
+    {
+        string lineWaiting;
+        while (getline(fWaiting, lineWaiting))
+        {
+            vector<string> elements;
+            int pos = 0;
+            while ((pos = lineWaiting.find(FileRW::sepCSV)) != std::string::npos)
+            {
+                elements.push_back(lineWaiting.substr(0, pos));
+                lineWaiting.erase(0, pos + FileRW::sepCSV.length());
+            }
+        
+            F_WAITING.push_back(elements);
+            elements.clear();
         }
     }
     return 0;

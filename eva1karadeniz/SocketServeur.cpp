@@ -1,5 +1,4 @@
 #include "SocketServeur.h"
-
 using namespace std;
 
 pthread_mutex_t mutexIndiceCourant;
@@ -10,13 +9,13 @@ int socketServeur;
 int hSocketConnectee[NB_MAX_CLIENTS]; /* Sockets pour clients*/
 void *fctThread(void *param);
 char *getThreadIdentity();
-void actionServeur(char*, char*, int&);
+int actionServeur(char *, char *, int &, int &, char *);
 int hSocketEcoute, /* Socket d'ecoute pour l'attente */
-        hSocketService;
+    hSocketService;
 SocketServeur::SocketServeur()
 {
-    FileReader::init();
-    FileReader::init_f();
+    FileRW::init();
+    FileRW::init_f();
     int i, j,                  /* variables d'iteration */
         retRecv;               /* Code de retour dun recv */
     struct hostent *infosHost; /*Infos sur le host : pour gethostbyname */
@@ -148,7 +147,9 @@ void *fctThread(void *param)
     int temps, retRecv;
     char *numThr = getThreadIdentity();
     int hSocketServ;
-    int state = 0; //0 = non authentifié, 1=authentifié
+    int state = DISCONNECTED; //0 = non authentifié, 1=authentifié
+    int terminal = -1;
+    char heure[10];
     while (1)
     {
         /* 1. Attente d'un client à traiter */
@@ -190,7 +191,7 @@ void *fctThread(void *param)
             }
 
             sprintf(msgServeur, "ACK pour votre message : <%s>", msgClient);
-            actionServeur(msgClient, msgServeur, state);
+            finDialogue = actionServeur(msgClient, msgServeur, state, terminal, heure);
             if (send(hSocketServ, msgServeur, MAXSTRING, 0) == -1)
             {
                 printf("Erreur sur le send de la socket %d\n", errno);
@@ -221,46 +222,124 @@ char *getThreadIdentity()
     return buf;
 }
 
-SocketServeur::~SocketServeur(){
+SocketServeur::~SocketServeur()
+{
     /* 10. Fermeture de la socket d'ecoute */
     close(hSocketEcoute); /* Fermeture de la socket */
     printf("Socket serveur fermee\n");
     puts("Fin du thread principal");
 }
 
-void actionServeur(char* msgClient, char* msgServeur, int &state){
+int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, char *heure)
+{
     string msgc = msgClient;
-    msgc = msgc.substr(0, msgc.find(FileReader::finTrame));
-    int pos = 0;
+    msgc = msgc.substr(0, msgc.find(FileRW::finTrame));
+    int pos = 0, ret = 0;
     vector<string> params;
     string response = "BLABLA";
-    while((pos = msgc.find(FileReader::sepTrame)) != std::string::npos){
+    while ((pos = msgc.find(FileRW::sepTrame)) != std::string::npos)
+    {
         params.push_back(msgc.substr(0, pos));
-        cout<<msgc<<endl;
-        msgc.erase(0, pos+FileReader::sepTrame.length());
+        msgc.erase(0, pos + FileRW::sepTrame.length());
     }
-    if(params[0] == "LOGIN"){
-        cout << "LOGIN ATTEMP" <<endl;
+    if (params[0] == "LOGIN")
+    {
         bool found = false;
-        
-        for(pos = 0; pos < FileReader::F_AGENTS.size() && !found; pos++){
-            if(FileReader::F_AGENTS[pos][0] == params[1])
+
+        for (pos = 0; pos < FileRW::F_AGENTS.size() && !found; pos++)
+        {
+            if (FileRW::F_AGENTS[pos][0] == params[1])
                 found = true;
         }
-        if(found){
-            cout << FileReader::F_AGENTS[pos-1][1] << " = ? " << params[2] << endl;
-            if(FileReader::F_AGENTS[pos-1][1] == params[2])
+        if (found)
+        {
+            if (FileRW::F_AGENTS[pos - 1][1] == params[2])
+            {
+                terminal = stoi(params[3]);
+                state = CONNECTED;
                 response = "CONNECTED !";
+            }
             else
                 response = "WRONG PWD !";
-            
         }
         else
             response = "AGENT NOT FOUND";
-        for(int i = 0; i < FileReader::F_AGENTS.size(); i++){
-            cout << FileReader::F_AGENTS[i][0];
-        }
-        strcpy(msgServeur, response.c_str());
     }
 
+    if (params[0] == "ASK-NEXT-DEPARTURE")
+    {
+        if (state == DISCONNECTED)
+        {
+            response = "NOT CONNECTED !";
+        }
+        else
+        {
+            bool found = false;
+            for (pos = 0; pos < FileRW::F_TERM.size() && !found; pos++)
+            {
+                if (FileRW::F_TERM[pos][0] == to_string(terminal))
+                    found = true;
+            }
+            if (found)
+            {
+                if (FileRW::F_TERM[pos - 1][1] == "-")
+                    response = "NO-FERRY" + FileRW::sepTrame;
+                else if(FileRW::F_TERM[pos - 1][2] == "NA")
+                    response = "DEPARTURE-UNKNOWN" + FileRW::sepTrame;
+                else{
+                    response = "DEPARTURE-KNOWN" + FileRW::sepTrame;
+                    strcpy(heure, FileRW::F_TERM[pos - 1][2].c_str());
+                }
+                
+
+                response = response + FileRW::F_TERM[pos - 1][1]+ FileRW::sepTrame
+                    +FileRW::F_TERM[pos - 1][2] + FileRW::sepTrame
+                    +FileRW::F_TERM[pos - 1][3] + FileRW::sepTrame;
+            }
+            else
+                response = "BAD-TERMINAL" + FileRW::sepTrame;
+        }
+    }
+
+    if(params[0] == "ASK-BEGIN-LOADING"){
+        if (state == DISCONNECTED)
+        {
+            response = "NOT CONNECTED !";
+        }
+        else
+        {
+            
+            string savedTime = FileRW::F_TERM[pos-1][2];
+            struct tm tm;
+            strptime(savedTime.c_str(), "%H-%M", &tm);
+            time_t savedTime_t = mktime(&tm);
+            strptime(heure, "%H-%M", &tm);
+            time_t heure_t = mktime(&tm);
+            double diff = difftime(savedTime_t, heure_t);
+            cout << "H Depart : "<< heure<<endl;
+            cout << "H demandee : "<< savedTime<<endl;
+            cout << "diff : "<<diff<<endl;
+            if(diff<(45*60)){
+                state = DEPARTURE_PLANNED;
+                response = "ACK" + FileRW::sepTrame;
+            }
+            else{
+                response = "FAIL" + FileRW::sepTrame;
+            }
+            
+        }
+
+    }
+
+    if (params[0] == "CLOSE")
+    {
+        state = DISCONNECTED;
+        terminal = -1;
+        cout << "CLOSE CONNECTION" << endl;
+        response = "CLOSE CONNECTION";
+        ret = 1;
+    }
+    response = response + FileRW::finTrame;
+    strcpy(msgServeur, response.c_str());
+    return ret;
 }

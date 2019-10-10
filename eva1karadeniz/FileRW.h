@@ -1,5 +1,5 @@
-#ifndef FILEREADER_H
-#define FILEREADER_H
+#ifndef FILERW_H
+#define FILERW_H
 
 #include <iostream>
 #include <fstream>
@@ -7,7 +7,7 @@
 #include <vector>
 using namespace std;
 
-class FileReader{
+class FileRW{
     private:
 
     public :
