@@ -23,7 +23,10 @@ class FileRW{
         static vector<vector<string> > F_WAITING;
         static int init();
         static int init_f();
-        
+        static int removeFerry(int terminal);
+        static int placeFerry(int terminal, string ferry);
+        static string addFerry(int terminal);
+        static int writeLog(string log);
         
 };
 

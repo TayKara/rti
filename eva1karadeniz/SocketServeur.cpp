@@ -9,7 +9,7 @@ int socketServeur;
 int hSocketConnectee[NB_MAX_CLIENTS]; /* Sockets pour clients*/
 void *fctThread(void *param);
 char *getThreadIdentity();
-int actionServeur(char *, char *, int &, int &, char *);
+int actionServeur(char *, char *, int &, int &, char *, char *);
 int hSocketEcoute, /* Socket d'ecoute pour l'attente */
     hSocketService;
 SocketServeur::SocketServeur()
@@ -149,7 +149,7 @@ void *fctThread(void *param)
     int hSocketServ;
     int state = DISCONNECTED; //0 = non authentifié, 1=authentifié
     int terminal = -1;
-    char heure[10];
+    char heure[10], heure2[10];
     while (1)
     {
         /* 1. Attente d'un client à traiter */
@@ -191,7 +191,7 @@ void *fctThread(void *param)
             }
 
             sprintf(msgServeur, "ACK pour votre message : <%s>", msgClient);
-            finDialogue = actionServeur(msgClient, msgServeur, state, terminal, heure);
+            finDialogue = actionServeur(msgClient, msgServeur, state, terminal, heure, heure2);
             if (send(hSocketServ, msgServeur, MAXSTRING, 0) == -1)
             {
                 printf("Erreur sur le send de la socket %d\n", errno);
@@ -230,13 +230,13 @@ SocketServeur::~SocketServeur()
     puts("Fin du thread principal");
 }
 
-int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, char *heure)
+int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, char *heure, char *heure2)
 {
     string msgc = msgClient;
     msgc = msgc.substr(0, msgc.find(FileRW::finTrame));
     int pos = 0, ret = 0;
     vector<string> params;
-    string response = "BLABLA";
+    string response = "VIDE" + FileRW::sepTrame;
     while ((pos = msgc.find(FileRW::sepTrame)) != std::string::npos)
     {
         params.push_back(msgc.substr(0, pos));
@@ -257,20 +257,20 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
             {
                 terminal = stoi(params[3]);
                 state = CONNECTED;
-                response = "CONNECTED !";
+                response = "CONNECTED !"+ FileRW::sepTrame;
             }
             else
-                response = "WRONG PWD !";
+                response = "WRONG PWD !"+ FileRW::sepTrame;
         }
         else
-            response = "AGENT NOT FOUND";
+            response = "AGENT NOT FOUND"+ FileRW::sepTrame;
     }
 
     if (params[0] == "ASK-NEXT-DEPARTURE")
     {
         if (state == DISCONNECTED)
         {
-            response = "NOT CONNECTED !";
+            response = "NOT CONNECTED !" + FileRW::sepTrame;
         }
         else
         {
@@ -284,17 +284,21 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
             {
                 if (FileRW::F_TERM[pos - 1][1] == "-")
                     response = "NO-FERRY" + FileRW::sepTrame;
-                else if(FileRW::F_TERM[pos - 1][2] == "NA")
-                    response = "DEPARTURE-UNKNOWN" + FileRW::sepTrame;
                 else{
-                    response = "DEPARTURE-KNOWN" + FileRW::sepTrame;
-                    strcpy(heure, FileRW::F_TERM[pos - 1][2].c_str());
-                }
-                
-
-                response = response + FileRW::F_TERM[pos - 1][1]+ FileRW::sepTrame
+                    if(FileRW::F_TERM[pos - 1][2] == "NA"){
+                        response = "DEPARTURE-UNKNOWN" + FileRW::sepTrame;
+                    }
+                    else{
+                        response = "DEPARTURE-KNOWN" + FileRW::sepTrame;
+                        strcpy(heure, FileRW::F_TERM[pos - 1][2].c_str());
+                    }
+                    response = response + FileRW::F_TERM[pos - 1][1]+ FileRW::sepTrame
                     +FileRW::F_TERM[pos - 1][2] + FileRW::sepTrame
                     +FileRW::F_TERM[pos - 1][3] + FileRW::sepTrame;
+                } 
+                
+
+                
             }
             else
                 response = "BAD-TERMINAL" + FileRW::sepTrame;
@@ -304,24 +308,26 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
     if(params[0] == "ASK-BEGIN-LOADING"){
         if (state == DISCONNECTED)
         {
-            response = "NOT CONNECTED !";
+            response = "NOT CONNECTED !" + FileRW::sepTrame;;
         }
         else
         {
             
-            string savedTime = FileRW::F_TERM[pos-1][2];
+            cout << "H Depart : "<< heure<<endl;
+            cout << "H demandee : "<< params[1]<<endl;
             struct tm tm;
-            strptime(savedTime.c_str(), "%H-%M", &tm);
+            strptime(params[1].c_str(), "%H-%M", &tm);
             time_t savedTime_t = mktime(&tm);
             strptime(heure, "%H-%M", &tm);
             time_t heure_t = mktime(&tm);
-            double diff = difftime(savedTime_t, heure_t);
-            cout << "H Depart : "<< heure<<endl;
-            cout << "H demandee : "<< savedTime<<endl;
+            cout << heure_t<<endl;
+            cout << savedTime_t << endl;
+            double diff = difftime(heure_t, savedTime_t);
             cout << "diff : "<<diff<<endl;
-            if(diff<(45*60)){
+            if( diff > 0 && diff<(45*60)){
                 state = DEPARTURE_PLANNED;
                 response = "ACK" + FileRW::sepTrame;
+                strcpy(heure2, params[1].c_str());
             }
             else{
                 response = "FAIL" + FileRW::sepTrame;
@@ -331,15 +337,94 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
 
     }
 
+    if(params[0] == "NOTIFY-END-LOADING"){
+        if (state == DEPARTURE_PLANNED)
+        {
+            cout << "H Depart : "<< heure2<<endl;
+            cout << "H demandee : "<< params[1]<<endl;
+            struct tm tm;
+            strptime(params[1].c_str(), "%H-%M", &tm);
+            time_t savedTime_t = mktime(&tm);
+            strptime(heure2, "%H-%M", &tm);
+            time_t heure_t = mktime(&tm);
+            cout << heure_t<<endl;
+            cout << savedTime_t << endl;
+            double diff = difftime(savedTime_t, heure_t);
+            cout << "diff : "<<diff<<endl;
+            if( diff >= 0 && diff<(15*60)){
+                state = DEPARTURE_LOADED;
+                response = "ACK" + FileRW::sepTrame;
+                strcpy(heure, params[1].c_str());
+            }
+            else{
+                response = "FAIL" + FileRW::sepTrame;
+            }
+        }
+        else
+        {
+            response = "NOT PLANNED !" + FileRW::sepTrame;
+        }
+    }
+
+    if(params[0] == "FERRY-LIVING"){
+        if (state == DEPARTURE_LOADED){
+            FileRW::removeFerry(terminal);
+            state = CONNECTED;
+            response = "FERRY LIVED !" + FileRW::sepTrame;
+        }
+        else{
+            response = "NOT LOADED !" + FileRW::sepTrame;
+        }
+    }
+
+    if(params[0] == "ASK-FOR-FERRY"){
+        if (state == DISCONNECTED)
+        {
+            response = "NOT CONNECTED !" + FileRW::sepTrame;
+        }
+        else
+        {
+            state = FERRY_ASKED;
+            string ferryName = FileRW::addFerry(terminal);
+            response = ferryName + FileRW::sepTrame;
+        }
+        
+    }
+
+    if(params[0] == "FERRY-ARRIVING"){
+        if(state == FERRY_ASKED){
+            if(FileRW::F_TERM[terminal-1][1] == params[1]){
+                response = "ACK" + FileRW::sepTrame;
+            }
+            else
+            {
+                response = "FAIL" + FileRW::sepTrame;
+            }
+            
+        }
+        else{
+            response = "FERRY NOT ASKED !" + FileRW::sepTrame;
+        }
+    }
+
     if (params[0] == "CLOSE")
     {
         state = DISCONNECTED;
         terminal = -1;
-        cout << "CLOSE CONNECTION" << endl;
-        response = "CLOSE CONNECTION";
+            time_t rawtime;
+        struct tm* tinfo;
+        char time_str[10];
+        time (&rawtime);
+        tinfo = localtime(&rawtime);
+        strftime (time_str,80,"%H-%M",tinfo);
+        string time_string = time_str;
+        response = time_string + FileRW::sepTrame;
         ret = 1;
     }
     response = response + FileRW::finTrame;
+    string log = msgClient;
+    log = log  + " -> " + response;
+    FileRW::writeLog(log);
     strcpy(msgServeur, response.c_str());
     return ret;
 }

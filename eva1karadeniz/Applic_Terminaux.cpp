@@ -4,120 +4,87 @@
 void traiterMessage(char *);
 void departureKnown();
 void departureUnknown();
-void noFerry();
+int noFerry();
 vector<string> params;
 SocketClient s;
 char msg[MAXSTRING];
 
 int main()
 {
+    bool finCon = false;
     char choix;
-    char user[30];
-    char password[30];
+    string user;
+    string password;
     int terminal;
-
+    string request;
     do
     {
+        if(params.size()>0)
+            params.clear();
+
         cout << "1. LOGIN" << endl;
         cout << "2. ASK_NEXT_DEPARTURE" << endl;
         cout << "0. CLOSE" << endl;
 
-        choix = getchar();
+        cin >> choix;
         switch (choix)
         {
         case '1':
             cout << "USER : ";
-            //fgets(user, sizeof(user), stdin);
             cin >> user;
             cout << "PASSWORD : ";
-            //fgets(password, sizeof(password), stdin);
             cin >> password;
             cout << "TERMINAL (1-4)" << endl;
             cin >> terminal;
-            sprintf(msg, "LOGIN|%s|%s|%d|#", user, password, terminal);
-
-            s.sendmsg(msg);
-            if (msg == NULL)
-            {
-                cout << "ERROR" << endl;
-            }
-            else
-            {
-                cout << msg << endl;
-            }
+            request = "LOGIN|" + user + "|" + password + "|" + to_string(terminal) + "|#";
             break;
 
         case '2':
-            sprintf(msg, "ASK-NEXT-DEPARTURE|#");
-            s.sendmsg(msg);
-            if (msg == NULL)
-            {
-                cout << "ERROR" << endl;
-            }
-            else
-            {
-                traiterMessage(msg);
-                if (params.size() > 0)
-                {
-                    if (params[0] == "DEPARTURE-KNOWN")
-                    {
-                        departureKnown();
-                        if (msg == NULL)
-                        {
-                            cout << "ERROR" << endl;
-                        }
-                        else
-                        {
-                            cout << msg << endl;
-                        }
-                    }
-                    if (params[0] == "DEPARTURE-UNKNOWN")
-                    {
-                        departureUnknown();
-
-                        if (msg == NULL)
-                        {
-                            cout << "ERROR" << endl;
-                        }
-                        else
-                        {
-                            cout << msg << endl;
-                        }
-                    }
-                    if (params[0] == "NO-FERRY")
-                    {
-                        noFerry();
-                        if (msg == NULL)
-                        {
-                            cout << "ERROR" << endl;
-                        }
-                        else
-                        {
-                            cout << msg << endl;
-                        }
-                    }
-                }
-            }
-
+            request = "ASK-NEXT-DEPARTURE|#";
             break;
-
         case '0':
-            sprintf(msg, "CLOSE|#");
-            s.sendmsg(msg);
-            if (msg == NULL)
-            {
-                cout << "ERROR" << endl;
-            }
-            else
-            {
-                cout << msg << endl;
-            }
+            request = "CLOSE|#";
+            finCon = true;
             break;
-
         default:
             break;
         }
-    } while (choix != 0);
+        strcpy(msg, request.c_str());
+        s.sendmsg(msg);
+        traiterMessage(msg);
+        if ( request == "ASK-NEXT-DEPARTURE|#" && params.size() > 0)
+        {
+            if (params[0] == "DEPARTURE-KNOWN")
+            {
+                departureKnown();
+                if (msg == NULL)
+                {
+                    cout << "ERROR" << endl;
+                }
+            }
+            if (params[0] == "DEPARTURE-UNKNOWN")
+            {
+                departureUnknown();
+
+                if (msg == NULL)
+                {
+                    cout << "ERROR" << endl;
+                }
+            }
+            if (params[0] == "NO-FERRY")
+            {
+                if (noFerry() == 0)
+                {
+                    finCon = true;
+                }
+                if (msg == NULL)
+                {
+                    cout << "ERROR" << endl;
+                }
+            }
+            cout << params[0] << endl;
+        }
+    } while (!finCon);
 
     return 0;
 }
@@ -142,19 +109,18 @@ void traiterMessage(char *msg)
 void departureKnown()
 {
     time_t rawtime;
-    struct tm* tinfo;
+    struct tm *tinfo;
     char time_str[10];
-    time (&rawtime);
+    time(&rawtime);
     tinfo = localtime(&rawtime);
-    strftime (time_str,80,"%H-%M",tinfo);
+    strftime(time_str, 80, "%H-%M", tinfo);
     string time_string = time_str;
 
-    string response = "BLABLA";
+    string response = "VIDE|#";
 
     cout << "1. ASK-BEGIN-LOADING" << endl;
     cout << "2. NOTIFY-END-LOADING" << endl;
-    cout << "0. FERRY-LIVING" << endl;
-
+    cout << "3. FERRY-LIVING" << endl;
 
     int choix = 0;
 
@@ -162,34 +128,68 @@ void departureKnown()
 
     switch (choix)
     {
-        case 1:
-            response = "ASK-BEGIN-LOADING|" + time_string + "|#";
-            break;
+    case 1:
+        response = "ASK-BEGIN-LOADING|" + time_string + "|#";
+        break;
 
-        case 2:
-            response = "NOTIFY-END-LOADING|" + time_string + "|#";
-            break;
+    case 2:
+        response = "NOTIFY-END-LOADING|" + time_string + "|#";
+        break;
 
-        case 3:
-            response = "FERRY-LIVING|" + time_string + "|#";
-            break;
+    case 3:
+        response = "FERRY-LIVING|" + time_string + "|#";
+        break;
 
-        default:
-            response = "ERROR|#";
-            break;
+    default:
+        response = "ERROR|#";
+        break;
     }
     strcpy(msg, response.c_str());
     s.sendmsg(msg);
+    traiterMessage(msg);
+    
 }
 
 void departureUnknown()
 {
-    cout << params[0] << endl;
+    
 }
 
-void noFerry()
+int noFerry()
 {
     cout << "1. ASK-FOR-FERRY" << endl;
     cout << "2. FERRY-ARRIVING" << endl;
     cout << "0. CLOSE" << endl;
+
+    string response = "BLABLA";
+    int choix = 0;
+
+    cin >> choix;
+
+    switch (choix)
+    {
+    case 1:
+        response = "ASK-FOR-FERRY|#";
+        break;
+
+    case 2:
+        response = "FERRY-ARRIVING|" + params[0] + "|#";
+        break;
+
+    case 0:
+        response = "CLOSE|#";
+        break;
+
+    default:
+        response = "ERROR|#";
+        break;
+    }
+    strcpy(msg, response.c_str());
+    s.sendmsg(msg);
+    traiterMessage(msg);
+    if (choix == 1){
+        cout << params[0] << endl;
+        noFerry();
+    }
+    return choix;
 }

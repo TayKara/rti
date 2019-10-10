@@ -9,9 +9,9 @@ string FileRW::finTrame;
 string FileRW::sepCSV;
 string FileRW::pwdMaster;
 string FileRW::pwdAdmin;
-vector<vector<string> > FileRW::F_AGENTS;
-vector<vector<string> > FileRW::F_TERM;
-vector<vector<string> > FileRW::F_WAITING;
+vector<vector<string>> FileRW::F_AGENTS;
+vector<vector<string>> FileRW::F_TERM;
+vector<vector<string>> FileRW::F_WAITING;
 
 int FileRW::init()
 {
@@ -78,11 +78,10 @@ int FileRW::init_f()
             if ((pos = lineAgent.find(FileRW::sepCSV)) != std::string::npos)
             {
                 elements.push_back(lineAgent.substr(0, pos));
-                elements.push_back(lineAgent.substr(pos+1, lineAgent.length()));
+                elements.push_back(lineAgent.substr(pos + 1, lineAgent.length()));
                 F_AGENTS.push_back(elements);
                 elements.clear();
             }
-            
         }
     }
     if (fTerm.is_open())
@@ -99,7 +98,6 @@ int FileRW::init_f()
             }
             F_TERM.push_back(elements);
             elements.clear();
-            
         }
     }
     if (fWaiting.is_open())
@@ -114,10 +112,90 @@ int FileRW::init_f()
                 elements.push_back(lineWaiting.substr(0, pos));
                 lineWaiting.erase(0, pos + FileRW::sepCSV.length());
             }
-        
+
             F_WAITING.push_back(elements);
             elements.clear();
         }
     }
+    return 0;
+}
+
+int FileRW::removeFerry(int terminal)
+{
+    fstream fTerm;
+    string lineTerm;
+    string newContent = "";
+    fTerm.open("F_TERM", fstream::in);
+    while (getline(fTerm, lineTerm))
+    {
+        if (lineTerm.substr(0, lineTerm.find(FileRW::sepCSV)) == to_string(terminal))
+        {
+            newContent = newContent + to_string(terminal) + ";-;NA;-\n";
+        }
+        else
+        {
+            newContent = newContent + lineTerm + "\n";
+        }
+    }
+    fTerm.close();
+    fTerm.open("F_TERM", fstream::out);
+    fTerm << newContent;
+    fTerm.close();
+
+    init_f();
+    return 0;
+}
+
+string FileRW::addFerry(int terminal){
+    init_f();
+    fstream fWaiting, fTerm;
+    string lineWaiting = "NO WAITING FERRY !";
+    fWaiting.open("F_WAITING", fstream::in);
+    if (getline(fWaiting, lineWaiting))
+    {
+        placeFerry(terminal, lineWaiting);
+
+        lineWaiting = lineWaiting.substr(0, lineWaiting.find(FileRW::sepCSV));
+    }
+    return lineWaiting;
+}
+
+int FileRW::placeFerry(int terminal, string ferry){
+    fstream fTerm;
+    string lineTerm;
+    string newContent = "";
+    fTerm.open("F_TERM", fstream::in);
+    while (getline(fTerm, lineTerm))
+    {
+        if (lineTerm.substr(0, lineTerm.find(FileRW::sepCSV)) == to_string(terminal))
+        {
+            newContent = newContent + to_string(terminal) + FileRW::sepCSV + ferry + "\n";
+        }
+        else
+        {
+            newContent = newContent + lineTerm + "\n";
+        }
+    }
+    fTerm.close();
+    fTerm.open("F_TERM", fstream::out);
+    fTerm << newContent;
+    fTerm.close();
+
+    init_f();
+    return 0;
+}
+
+int FileRW::writeLog(string log){
+    time_t rawtime;
+    struct tm *tinfo;
+    char time_str[10];
+    time(&rawtime);
+    tinfo = localtime(&rawtime);
+    strftime(time_str, 80, "[%H:%M:%S]", tinfo);
+    string time_string = time_str;
+
+    fstream fLogs;
+    fLogs.open("logs.txt", fstream::out | fstream::app);
+    fLogs << time_string+log+"\n";
     return 0;
 }
