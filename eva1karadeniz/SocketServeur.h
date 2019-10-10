@@ -2,6 +2,7 @@
 #define SOCKETSERVEUR_H
 
 #include "./Socket.h"
+#include "./FileReader.h"
 using namespace std;
 
 class SocketServeur : public Socket{

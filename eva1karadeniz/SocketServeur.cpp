@@ -15,7 +15,8 @@ int hSocketEcoute, /* Socket d'ecoute pour l'attente */
         hSocketService;
 SocketServeur::SocketServeur()
 {
-    
+    FileReader::init();
+    FileReader::init_f();
     int i, j,                  /* variables d'iteration */
         retRecv;               /* Code de retour dun recv */
     struct hostent *infosHost; /*Infos sur le host : pour gethostbyname */
@@ -215,7 +216,7 @@ char *getThreadIdentity()
 {
     unsigned long numSequence;
     char *buf = (char *)malloc(30);
-    //numSequence = pthread_getsequence_np(pthread_self()); fonction non-implémentée sur Ubuntu
+    //numSequence = pthread_getsequence_np(pthread_self());// fonction non-implémentée sur Ubuntu
     sprintf(buf, "%d.%u", getpid(), pthread_self());
     return buf;
 }
@@ -229,18 +230,36 @@ SocketServeur::~SocketServeur(){
 
 void actionServeur(char* msgClient, char* msgServeur, int &state){
     string msgc = msgClient;
-    string fintrame = "#";
-    string septrame = "|";
-    msgc = msgc.substr(0, msgc.find(fintrame));
+    msgc = msgc.substr(0, msgc.find(FileReader::finTrame));
     int pos = 0;
     vector<string> params;
-
-    while((pos = msgc.find(septrame)) != std::string::npos){
+    string response = "BLABLA";
+    while((pos = msgc.find(FileReader::sepTrame)) != std::string::npos){
         params.push_back(msgc.substr(0, pos));
-        msgc.erase(0, pos+septrame.length());
+        cout<<msgc<<endl;
+        msgc.erase(0, pos+FileReader::sepTrame.length());
     }
     if(params[0] == "LOGIN"){
-        string response = "BRAVO" + params[1] + params[2] + params[3];
+        cout << "LOGIN ATTEMP" <<endl;
+        bool found = false;
+        
+        for(pos = 0; pos < FileReader::F_AGENTS.size() && !found; pos++){
+            if(FileReader::F_AGENTS[pos][0] == params[1])
+                found = true;
+        }
+        if(found){
+            cout << FileReader::F_AGENTS[pos-1][1] << " = ? " << params[2] << endl;
+            if(FileReader::F_AGENTS[pos-1][1] == params[2])
+                response = "CONNECTED !";
+            else
+                response = "WRONG PWD !";
+            
+        }
+        else
+            response = "AGENT NOT FOUND";
+        for(int i = 0; i < FileReader::F_AGENTS.size(); i++){
+            cout << FileReader::F_AGENTS[i][0];
+        }
         strcpy(msgServeur, response.c_str());
     }
 

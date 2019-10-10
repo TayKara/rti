@@ -1,8 +1,8 @@
 .SILENT:
-GPP = g++ -Wall -m64 -pthread -fpermissive
-Class = Socket.o SocketServeur.o SocketClient.o 
+GPP = g++ -Wall -m64 -pthread -fpermissive -std=c++11
+Class = FileReader.o Socket.o SocketServeur.o SocketClient.o
 
-All: Serveur_Terminaux Applic_Terminaux
+All: Serveur_Terminaux Applic_Terminaux 
 	
 # ------------------------ CLIENT - SERVER ------------------------
 	
@@ -16,14 +16,17 @@ Applic_Terminaux: $(Class) Applic_Terminaux.cpp
 
 # ------------------------ SOCKET ------------------------
 
+FileReader.o: FileReader.cpp FileReader.h
+	echo Creation FileReader
+	$(GPP) -c FileReader.cpp -o FileReader.o
+
 Socket.o: Socket.cpp Socket.h
 	echo Creation Socket
 	$(GPP) -c Socket.cpp -o Socket.o
 
 SocketServeur.o: SocketServeur.cpp SocketServeur.h
 	echo Creation SocketServeur
-	$(GPP) -c SocketServeur.cpp -o SocketServeur.o
-
+	$(GPP) -c SocketServeur.cpp FileReader.o -o SocketServeur.o
 
 SocketClient.o: SocketClient.cpp SocketClient.h 
 	echo Creation SocketClient
