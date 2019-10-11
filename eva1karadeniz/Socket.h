@@ -1,6 +1,6 @@
 #ifndef SOCKET_H
 #define SOCKET_H
-#define NB_MAX_CLIENTS 2 /* Nombre maximum de clients connectes */
+#define NB_MAX_CLIENTS 5 /* Nombre maximum de clients connectes */
 #define EOC "END_OF_CONNEXION"
 #define DOC "DENY_OF_CONNEXION"
 #define PORT 51101 /* Port d'ecoute de la socket serveur */ 

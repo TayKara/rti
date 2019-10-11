@@ -52,6 +52,7 @@ int main()
         strcpy(msg, request.c_str());
         s.sendmsg(msg);
         traiterMessage(msg);
+        cout << params[0] << endl;
         if ( request == "ASK-NEXT-DEPARTURE|#" && params.size() > 0)
         {
             if (params[0] == "DEPARTURE-KNOWN")
