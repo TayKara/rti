@@ -315,14 +315,23 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
             
             cout << "H Depart : "<< heure<<endl;
             cout << "H demandee : "<< params[1]<<endl;
-            struct tm tm;
-            strptime(params[1].c_str(), "%H-%M", &tm);
-            time_t savedTime_t = mktime(&tm);
-            strptime(heure, "%H-%M", &tm);
-            time_t heure_t = mktime(&tm);
+            /*struct tm tm1;
+            strptime(params[1].c_str(), "%H-%M", &tm1);
+            time_t savedTime_t = mktime(&tm1);
+            strptime(heure, "%H-%M", &tm1);
+            time_t heure_t = mktime(&tm1);
             cout << heure_t<<endl;
             cout << savedTime_t << endl;
-            double diff = difftime(heure_t, savedTime_t);
+            double diff = difftime(heure_t, savedTime_t);*/
+
+            string heures = heure;
+            int h1 = stoi(heures.substr(0, heures.find("-")));
+            int h2 = stoi(params[1].substr(0, params[1].find("-")));
+            int m1 = stoi(heures.substr(heures.find("-")+1, heures.length()));
+            int m2 = stoi(params[1].substr(params[1].find("-")+1, params[1].length()));
+            h1 = (h1*60*60) + (m1 * 60);
+            h2 = (h2*60*60) + (m2 * 60);
+            int diff = h1 - h2;
             cout << "diff : "<<diff<<endl;
             if( diff > 0 && diff<(45*60)){
                 state = DEPARTURE_PLANNED;
@@ -342,14 +351,24 @@ int actionServeur(char *msgClient, char *msgServeur, int &state, int &terminal, 
         {
             cout << "H Depart : "<< heure2<<endl;
             cout << "H demandee : "<< params[1]<<endl;
-            struct tm tm;
+            /*struct tm tm;
             strptime(params[1].c_str(), "%H-%M", &tm);
             time_t savedTime_t = mktime(&tm);
             strptime(heure2, "%H-%M", &tm);
             time_t heure_t = mktime(&tm);
             cout << heure_t<<endl;
             cout << savedTime_t << endl;
-            double diff = difftime(savedTime_t, heure_t);
+            double diff = difftime(savedTime_t, heure_t);*/
+
+
+            string heures = heure2;
+            int h1 = stoi(heures.substr(0, heures.find("-")));
+            int h2 = stoi(params[1].substr(0, params[1].find("-")));
+            int m1 = stoi(heures.substr(heures.find("-")+1, heures.length()));
+            int m2 = stoi(params[1].substr(params[1].find("-")+1, params[1].length()));
+            h1 = (h1*60*60) + (m1 * 60);
+            h2 = (h2*60*60) + (m2 * 60);
+            int diff = h1 - h2;
             cout << "diff : "<<diff<<endl;
             if( diff >= 0 && diff<(15*60)){
                 state = DEPARTURE_LOADED;
